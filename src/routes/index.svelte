@@ -1,55 +1,32 @@
-<script context="module">
+<script lang="ts">
+	import { transactions as writableTransactions } from '../stores/transactions';
 	import { db } from '$lib/firebase/config';
-	import { collection, getDocs } from 'firebase/firestore';
-
-	export async function load() {
-		const collectionRef = collection(db, 'transactions');
-		let transactions = [];
-
-		await getDocs(collectionRef)
-			.then((snapshot) => {
-				snapshot.docs.forEach((doc) => {
-					transactions.push({
-						...doc.data(),
-						id: doc.id
-					});
-				});
-				console.log(transactions);
-			})
-			.catch((error) => {
-				console.log(error.message);
-				return {
-					error
-				};
-			});
-
-		return { props: { transactions } };
-	}
-</script>
-
-<script>
-	import { addDoc } from 'firebase/firestore';
-	export let transactions;
-
-	// interface Transaction {
-	// 	transactionType: string;
-	// 	nftId: string;
-	// 	collection: string;
-	// 	coin: string;
-	// 	amount: number;
-	// 	quantity: number;
-	// 	coinPrice: number;
-	// 	total: number;
-	// 	rank?: string;
-	// 	notes?: string;
-	// }
+	import { addDoc, collection, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+	// export let transactions: Record<string, any>[];
+	//console.log('script:transactions:', transactions);
+	console.log($writableTransactions);
 
 	const collectionRef = collection(db, 'transactions');
+
+	interface Transaction {
+		id: string;
+		transactionType: string;
+		nftId: string;
+		nftCollection: string;
+		nftImageUrl?: string;
+		transactionCoin: string;
+		amount: number;
+		quantity: number;
+		coinPrice: number;
+		total: number;
+		nftRank?: string;
+		notes?: string;
+	}
 
 	async function addTransaction(e) {
 		const formData = new FormData(e.target);
 
-		const data = {};
+		const data = {} as Transaction;
 		for (const [k, v] of formData.entries()) {
 			data[k] = v;
 		}
@@ -63,12 +40,12 @@
 				nftId: data.nftId,
 				nftCollection: data.nftCollection,
 				nftImageUrl: data.nftImageUrl,
-				transactionCoin: data.coin,
+				transactionCoin: data.transactionCoin,
 				coinPrice: data.coinPrice,
 				quantity: data.quantity,
 				amount: data.amount,
 				total: data.total,
-				nftRank: data.rank,
+				nftRank: data.nftRank,
 				notes: data.notes
 			});
 
@@ -79,9 +56,17 @@
 		}
 	}
 
-	async function deleteTransaction() {}
+	async function deleteTransaction(e) {
+		const docRef = doc(db, 'transactions', e.target.docId.value);
+		// console.log(docRef); // Has the doc.id property
 
-	// $: newTransactionData = {} as Transaction;
+		try {
+			await deleteDoc(docRef);
+			e.target.reset();
+		} catch (err) {
+			console.log(err);
+		}
+	}
 
 	// $: newTransactionData = {
 	// 	transactionType: '',
@@ -109,48 +94,59 @@
 
 <main>
 	<section class="forms">
-		<form on:submit|preventDefault={addTransaction} class="add-transaction">
-			<label for="transactionType">Tx type:</label>
-			<input type="text" name="transactionType" />
+		<div class="add-transaction">
+			<form on:submit|preventDefault={addTransaction}>
+				<label for="transactionType">Tx type:</label>
+				<input type="text" name="transactionType" />
 
-			<label for="nftId">NFT ID:</label>
-			<input type="text" name="nftId" />
+				<label for="nftId">NFT ID:</label>
+				<input type="text" name="nftId" />
 
-			<label for="nftCollection">Collection:</label>
-			<input type="text" name="nftCollection" />
+				<label for="nftCollection">Collection:</label>
+				<input type="text" name="nftCollection" />
 
-			<label for="nftImageUrl">NFT URL:</label>
-			<input type="text" name="nftImageUrl" />
+				<label for="nftImageUrl">NFT URL:</label>
+				<input type="text" name="nftImageUrl" />
 
-			<label for="coin">Coin:</label>
-			<input type="text" name="coin" />
+				<label for="transactionCoin">Coin:</label>
+				<input type="text" name="transactionCoin" />
 
-			<label for="coinPrice">Coin Price:</label>
-			<input type="number" name="coinPrice" />
+				<label for="coinPrice">Coin Price:</label>
+				<input type="number" name="coinPrice" />
 
-			<label for="quantity">Quantity:</label>
-			<input type="number" name="quantity" />
+				<label for="quantity">Quantity:</label>
+				<input type="number" name="quantity" />
 
-			<label for="amount">Amount:</label>
-			<input type="number" name="amount" />
+				<label for="amount">Amount:</label>
+				<input type="number" name="amount" />
 
-			<label for="total">Total:</label>
-			<input type="number" name="total" disabled />
+				<label for="total">Total:</label>
+				<input type="number" name="total" disabled />
 
-			<label for="rank">Rank:</label>
-			<input type="text" name="rank" />
+				<label for="nftRank">Rank:</label>
+				<input type="text" name="nftRank" />
 
-			<label for="notes">Notes:</label>
-			<input type="text" name="notes" />
+				<label for="notes">Notes:</label>
+				<input type="text" name="notes" />
 
-			<button type="submit">Submit</button>
-		</form>
+				<button type="submit">Submit</button>
+			</form>
+		</div>
+
+		<div class="delete-transaction">
+			<form on:submit|preventDefault={deleteTransaction}>
+				<label for="docId">ID:</label>
+				<input type="text" name="docId" />
+
+				<button type="submit">Submit</button>
+			</form>
+		</div>
 	</section>
 
 	<section class="transactions">
 		<h1>NFTYGMI</h1>
 		<h3>Transactions:</h3>
-		{#each transactions as { id, transactionType, transactionCoin, nftId, nftCollection } (id)}
+		{#each $writableTransactions as { id, transactionType, transactionCoin, nftId, nftCollection } (id)}
 			<h3>{id}</h3>
 			<ul>
 				<li>{transactionType}</li>
@@ -163,9 +159,8 @@
 </main>
 
 <style>
-	.add-transaction {
+	.forms {
 		display: flex;
 		flex-direction: column;
-		max-width: 200px;
 	}
 </style>
