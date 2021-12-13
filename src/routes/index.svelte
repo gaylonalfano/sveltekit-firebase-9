@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { transactions as writableTransactions } from '../stores/transactions';
+	import { TransactionsStore } from '$lib/stores/transactions';
 	import { db } from '$lib/firebase/config';
 	import { addDoc, collection, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 	// export let transactions: Record<string, any>[];
 	//console.log('script:transactions:', transactions);
-	console.log($writableTransactions);
+	console.log($TransactionsStore);
 
 	const collectionRef = collection(db, 'transactions');
 
@@ -146,7 +146,7 @@
 	<section class="transactions">
 		<h1>NFTYGMI</h1>
 		<h3>Transactions:</h3>
-		{#each $writableTransactions as { id, transactionType, transactionCoin, nftId, nftCollection } (id)}
+		{#each $TransactionsStore as { id, transactionType, transactionCoin, nftId, nftCollection } (id)}
 			<h3>{id}</h3>
 			<ul>
 				<li>{transactionType}</li>
